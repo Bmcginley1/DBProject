@@ -31,9 +31,16 @@ def add_customer(new_customer: Customer = None):
         new_customer and its attributes will never be None.
     """
     # generate address sk
-    address_sk = None
+    cur.execute("""
+        SELECT MAX(ca_address_sk) FROM customer_address
+    """)
+    address_sk = cur.fetchone() + 1
+
     # generate customer sk
-    cust_sk = None
+    cur.execute("""
+        SELECT MAX(ca_address_sk) FROM customer_address
+    """)
+    cust_sk = cur.fetchone() + 1
 
     # splits address into components
     str_num, temp = new_customer.address.split(" ", 1)
@@ -43,7 +50,7 @@ def add_customer(new_customer: Customer = None):
 
     # insert new row into customer_address
     cur.execute("""
-        INSERT INTO customer_address (ca_customer_sk, ca_street_number, ca_street_name, ca_city, ca_state, ca_zip)
+        INSERT INTO customer_address (ca_address_sk, ca_street_number, ca_street_name, ca_city, ca_state, ca_zip)
             VALUES
             (?, ?, ?, ?, ?, ?)
     """, (
