@@ -15,6 +15,7 @@ conn = connect(user=DB_CONFIG["username"], password=DB_CONFIG["password"], host=
 cur = conn.cursor()
 
 
+# Bryson
 def add_item(new_item: Item = None):
     """
     new_item - An Item object containing a new item to be inserted into the DB in the item table.
@@ -51,6 +52,7 @@ def add_customer(new_customer: Customer = None):
     """)
 
 
+# Bryson
 def edit_customer(original_customer_id: str = None, new_customer: Customer = None):
     """
     original_customer_id - A string containing the customer id for the customer to be edited.
@@ -69,6 +71,7 @@ def rent_item(item_id: str = None, customer_id: str = None):
 
     """)
 
+# Bryson
 def waitlist_customer(item_id: str = None, customer_id: str = None) -> int:
     """
     Returns the customer's new place in line.
@@ -83,6 +86,7 @@ def update_waitlist(item_id: str = None):
     raise NotImplementedError("you must implement this function")
 
 
+# Bryson
 def return_item(item_id: str = None, customer_id: str = None):
     """
     Moves a rental from rental to rental_history with return_date = today.
@@ -98,6 +102,7 @@ def grant_extension(item_id: str = None, customer_id: str = None):
     raise NotImplementedError("you must implement this function")
 
 
+# Bryson
 def get_filtered_items(filter_attributes: Item = None,
                        use_patterns: bool = False,
                        min_price: float = -1,
@@ -118,6 +123,7 @@ def get_filtered_customers(filter_attributes: Customer = None, use_patterns: boo
     raise NotImplementedError("you must implement this function")
 
 
+# Bryson
 def get_filtered_rentals(filter_attributes: Rental = None,
                          min_rental_date: str = None,
                          max_rental_date: str = None,
@@ -143,6 +149,7 @@ def get_filtered_rental_histories(filter_attributes: RentalHistory = None,
     raise NotImplementedError("you must implement this function")
 
 
+# Bryson
 def get_filtered_waitlist(filter_attributes: Waitlist = None,
                           min_place_in_line: int = -1,
                           max_place_in_line: int = -1) -> list[Waitlist]:
@@ -160,6 +167,7 @@ def number_in_stock(item_id: str = None) -> int:
     raise NotImplementedError("you must implement this function")
 
 
+# Bryson
 def place_in_line(item_id: str = None, customer_id: str = None) -> int:
     """
     Returns the customer's place_in_line, or -1 if not on waitlist.
@@ -174,12 +182,14 @@ def line_length(item_id: str = None) -> int:
     """
     raise NotImplementedError("you must implement this function")
 
+
 # Gabby
 def save_changes():
     """
     Commits all changes made to the db.
     """
     conn.commit()
+
 
 # Gabby
 def close_connection():
