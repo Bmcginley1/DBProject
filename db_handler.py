@@ -30,7 +30,17 @@ def add_customer(new_customer: Customer = None):
         new_customer and its attributes will never be None.
     """
     # splits address into components
+        # street number and name
+        # city
+        # state
+        # zip
     # inserts new row into customer_address
+    cur.execute("""
+        INSERT INTO customer_address (c_customer_sk, ca_street_number, ca_street_name, ca_city, ca_state, ca_zip)
+            VALUES
+            ()
+        ;
+    """)
     # inserts into customer
     f_name, l_name = new_customer.name.split(" ")
     cur.execute("""
@@ -164,13 +174,12 @@ def line_length(item_id: str = None) -> int:
     """
     raise NotImplementedError("you must implement this function")
 
-
+# Gabby
 def save_changes():
     """
     Commits all changes made to the db.
     """
-    raise NotImplementedError("you must implement this function")
-
+    conn.commit()
 
 # Gabby
 def close_connection():
