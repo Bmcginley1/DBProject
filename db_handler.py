@@ -203,7 +203,6 @@ def line_length(item_id: str = None) -> int:
     raise NotImplementedError("you must implement this function")
 
 
-# Gabby
 def save_changes():
     """
     Commits all changes made to the db.
@@ -211,7 +210,6 @@ def save_changes():
     conn.commit()
 
 
-# Gabby
 def close_connection():
     """
     Closes the cursor and connection.
