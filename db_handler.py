@@ -30,26 +30,46 @@ def add_customer(new_customer: Customer = None):
     new_customer - A Customer object containing a new customer to be inserted into the DB in the customer table.
         new_customer and its attributes will never be None.
     """
+    # generate address sk
+    address_sk = None
+    # generate customer sk
+    cust_sk = None
+
     # splits address into components
-        # street number and name
-        # city
-        # state
-        # zip
-    # inserts new row into customer_address
+    str_num, temp = new_customer.address.split(" ", 1)
+    str_name, temp = temp.split(", ", 1)
+    city, temp = temp.split(", ", 1)
+    state, zip = temp.split(" ")
+
+    # insert new row into customer_address
     cur.execute("""
-        INSERT INTO customer_address (c_customer_sk, ca_street_number, ca_street_name, ca_city, ca_state, ca_zip)
+        INSERT INTO customer_address (ca_customer_sk, ca_street_number, ca_street_name, ca_city, ca_state, ca_zip)
             VALUES
-            ()
-        ;
-    """)
+            (?, ?, ?, ?, ?, ?)
+    """, (
+        address_sk,
+        str_num,
+        str_name,
+        city,
+        state,
+        zip
+    ))
+
     # inserts into customer
+    #   DO WE NEED TO GENERATE A SURROGATE KEY? OR IS IT GIVEN SOMEWHERE?
     f_name, l_name = new_customer.name.split(" ")
     cur.execute("""
         INSERT INTO customer (c_customer_sk, c_customer_id, c_first_name, c_last_name, c_email_address, c_current_addr_sk)
             VALUES
-            ()
-        ;
-    """)
+            (?, ?, ?, ?, ?, ?)
+    """, (
+        cust_sk,
+        new_customer.customer_id,
+        f_name,
+        l_name,
+        new_customer.email,
+        address_sk
+    ))
 
 
 # Bryson
