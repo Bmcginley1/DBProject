@@ -34,19 +34,19 @@ def add_customer(new_customer: Customer = None):
     cur.execute("""
         SELECT MAX(ca_address_sk) FROM customer_address
     """)
-    address_sk = cur.fetchone() + 1
+    address_sk = cur.fetchone()[0] + 1
 
     # generate customer sk
     cur.execute("""
-        SELECT MAX(ca_address_sk) FROM customer_address
+        SELECT MAX(c_customer_sk) FROM customer
     """)
-    cust_sk = cur.fetchone() + 1
+    cust_sk = cur.fetchone()[0] + 1
 
     # splits address into components
     str_num, temp = new_customer.address.split(" ", 1)
     str_name, temp = temp.split(", ", 1)
     city, temp = temp.split(", ", 1)
-    state, zip = temp.split(" ")
+    state, zip_code = temp.split(" ")
 
     # insert new row into customer_address
     cur.execute("""
@@ -59,12 +59,11 @@ def add_customer(new_customer: Customer = None):
         str_name,
         city,
         state,
-        zip
+        zip_code
     ))
 
     # inserts into customer
-    #   DO WE NEED TO GENERATE A SURROGATE KEY? OR IS IT GIVEN SOMEWHERE?
-    f_name, l_name = new_customer.name.split(" ")
+    f_name, l_name = new_customer.name.split(" ", 1)
     cur.execute("""
         INSERT INTO customer (c_customer_sk, c_customer_id, c_first_name, c_last_name, c_email_address, c_current_addr_sk)
             VALUES
@@ -94,8 +93,11 @@ def rent_item(item_id: str = None, customer_id: str = None):
     item_id - A string containing the Item ID for the item being rented.
     customer_id - A string containing the customer id of the customer renting the item.
     """
+    today = date.today()
+    due_date = today + timedelta(days=14)
+    # inserts row into rental_date = today
     cur.execute("""
-
+        INSERT INTO 
     """)
 
 # Bryson
