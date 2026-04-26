@@ -95,10 +95,17 @@ def rent_item(item_id: str = None, customer_id: str = None):
     """
     today = date.today()
     due_date = today + timedelta(days=14)
-    # inserts row into rental_date = today
+
     cur.execute("""
-        INSERT INTO 
-    """)
+        INSERT INTO rental (item_id, customer_id, rental_date, due_date)
+            VALUES
+            (?, ?, ?, ?)
+    """, (
+        item_id,
+        customer_id,
+        today,
+        due_date
+    ))
 
 # Bryson
 def waitlist_customer(item_id: str = None, customer_id: str = None) -> int:
@@ -112,7 +119,15 @@ def update_waitlist(item_id: str = None):
     """
     Removes person at position 1 and shifts everyone else down by 1.
     """
-    raise NotImplementedError("you must implement this function")
+    cur.execute("""
+        DELETE FROM waitlist 
+        WHERE place_in_line = 1 AND item_id = ?
+    """, (item_id,))
+    cur.execute("""
+        UPDATE waitlist 
+        SET place_in_line = place_in_line - 1 
+        WHERE item_id = ?
+    """, (item_id,))
 
 
 # Bryson
@@ -128,8 +143,19 @@ def grant_extension(item_id: str = None, customer_id: str = None):
     """
     Adds 14 days to the due_date.
     """
-    raise NotImplementedError("you must implement this function")
+    # fix the updating to 14 days- check discussion
+    # retrieve current due date
+    # update due date in python
+    # update rental
 
+    # or
+
+    # update due date in sql
+    cur.execute("""
+        UPDATE rental
+        SET due_date = DATE_ADD(due_date, INTERVAL 14 DAY)
+        WHERE item_id = ? AND customer_id = ?
+    """, (item_id, customer_id))
 
 # Bryson
 def get_filtered_items(filter_attributes: Item = None,
