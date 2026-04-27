@@ -34,13 +34,21 @@ def add_customer(new_customer: Customer = None):
     cur.execute("""
         SELECT MAX(ca_address_sk) FROM customer_address
     """)
-    address_sk = cur.fetchone()[0] + 1
+    result = cur.fetchone()[0]
+    if result is None:
+        address_sk = 1
+    else:
+        address_sk = result + 1
 
     # generate customer sk
     cur.execute("""
         SELECT MAX(c_customer_sk) FROM customer
     """)
-    cust_sk = cur.fetchone()[0] + 1
+    result = cur.fetchone()[0]
+    if result is None:
+        cust_sk = 1
+    else:
+        cust_sk = cur.fetchone()[0] + 1
 
     # splits address into components
     str_num, temp = new_customer.address.split(" ", 1)
@@ -175,7 +183,118 @@ def get_filtered_customers(filter_attributes: Customer = None, use_patterns: boo
     """
     Returns a list of Customer objects matching the filters.
     """
-    raise NotImplementedError("you must implement this function")
+
+    # to store condition strings and variables
+    cond = []
+    vars = []
+
+    # create query string to add to
+    total_query = """
+                SELECT 
+                    c.c_customer_id, c.c_first_name, 
+                    c.c_last_name, a.ca_street_number, 
+                    a.ca_street_name, a.ca_city, 
+                    a.ca_state, a.ca_zip, c.c_email_address
+                FROM customer c JOIN customer_address a ON c.c_current_addr_sk = a.ca_address_sk
+            """
+
+    if filter_attributes is not None:
+
+        # get filters from filter_attributes
+        cust_id = filter_attributes.customer_id
+        name = filter_attributes.name
+        addr = filter_attributes.address
+        email = filter_attributes.email
+
+        # filter by customer id
+        if cust_id is not None:
+            vars.append(cust_id)
+            if use_patterns:
+                cond.append("c.c_customer_id LIKE ?")
+            else:
+                cond.append("c.c_customer_id = ?")
+
+        # filter by name
+        if name is not None:
+            first, last = name.split(" ", 1)
+            vars.append(first)
+            vars.append(last)
+
+            if use_patterns:
+                cond.append("c.c_first_name LIKE ? AND c.c_last_name LIKE ?")
+            else:
+                cond.append("c.c_first_name = ? AND c.c_last_name = ?")
+
+        # filter by email
+        if email is not None:
+            vars.append(email)
+            if use_patterns:
+                cond.append("c.c_email_address LIKE ?")
+            else:
+                cond.append("c.c_email_address = ?")
+
+        # filter by address
+        if addr is not None:
+            str_num, temp = addr.split(" ", 1)
+            str_name, temp = temp.split(", ", 1)
+            city, temp = temp.split(", ", 1)
+            state, zip_code = temp.split(" ")
+
+            vars.append(str_num)
+            vars.append(str_name)
+            vars.append(city)
+            vars.append(state)
+            vars.append(zip_code)
+
+            if use_patterns:
+                cond.append("""
+                        a.ca_street_number LIKE ? AND
+                        a.ca_street_name LIKE ? AND
+                        a.ca_city LIKE ? AND
+                        a.ca_state LIKE ? AND
+                        a.ca_zip LIKE ?
+                    """)
+            else:
+                cond.append("""
+                        a.ca_street_number = ? AND
+                        a.ca_street_name = ? AND
+                        a.ca_city = ? AND
+                        a.ca_state = ? AND
+                        a.ca_zip = ?
+                    """)
+
+    # add conditions to query string
+    if cond:
+        total_query += " WHERE "
+        for i in range(len(cond)):
+            total_query += cond[i]
+            if i < len(cond) - 1:
+                total_query += " AND "
+
+    # execute query and store
+    cur.execute(total_query, tuple(vars))
+    results = cur.fetchall()
+
+    customers = []
+
+    # create customer objects with results from query
+    for i in results:
+        customer_id = i[0]
+        first_name = i[1]
+        last_name = i[2]
+        street_num = i[3]
+        street_name = i[4]
+        city = i[5]
+        state = i[6]
+        zip_code = i[7]
+        email = i[8]
+
+        full_name = first_name + " " + last_name
+        full_address = street_num + " " + street_name + ", " + city + ", " + state + " " + zip_code
+
+        customers.append(Customer(customer_id, full_name, full_address, email))
+
+    return customers
 
 
 # Bryson
@@ -201,7 +320,112 @@ def get_filtered_rental_histories(filter_attributes: RentalHistory = None,
     """
     Returns a list of RentalHistory objects matching the filters.
     """
-    raise NotImplementedError("you must implement this function")
+
+    # to store condition strings and variables
+    cond = []
+    vars = []
+
+    # create query string to add to
+    total_query = """
+        SELECT 
+            item_id,
+            customer_id,
+            rental_date,
+            due_date,
+            return_date
+        FROM rental_history
+    """
+
+    if filter_attributes is not None:
+
+        # get filters from filter_attributes
+        item_id = filter_attributes.item_id
+        customer_id = filter_attributes.customer_id
+        rental_date = filter_attributes.rental_date
+        due_date = filter_attributes.due_date
+        return_date = filter_attributes.return_date
+
+        # filter by item id
+        if item_id is not None:
+            vars.append(item_id)
+            cond.append("item_id = ?")
+
+        # filter by customer id
+        if customer_id is not None:
+            vars.append(customer_id)
+            cond.append("customer_id = ?")
+
+        # filter by rental date
+        if rental_date is not None:
+            vars.append(rental_date)
+            cond.append("rental_date = ?")
+
+        # filter by due date
+        if due_date is not None:
+            vars.append(due_date)
+            cond.append("due_date = ?")
+
+        # filter by return date
+        if return_date is not None:
+            vars.append(return_date)
+            cond.append("return_date = ?")
+
+    # range filters
+    if min_rental_date is not None:
+        vars.append(min_rental_date)
+        cond.append("rental_date >= ?")
+
+    if max_rental_date is not None:
+        vars.append(max_rental_date)
+        cond.append("rental_date <= ?")
+
+    if min_due_date is not None:
+        vars.append(min_due_date)
+        cond.append("due_date >= ?")
+
+    if max_due_date is not None:
+        vars.append(max_due_date)
+        cond.append("due_date <= ?")
+
+    if min_return_date is not None:
+        vars.append(min_return_date)
+        cond.append("return_date >= ?")
+
+    if max_return_date is not None:
+        vars.append(max_return_date)
+        cond.append("return_date <= ?")
+
+    # add conditions to query string
+    if cond:
+        total_query += " WHERE "
+        for i in range(len(cond)):
+            total_query += cond[i]
+            if i < len(cond) - 1:
+                total_query += " AND "
+
+    # execute query and store
+    cur.execute(total_query, tuple(vars))
+    results = cur.fetchall()
+
+    rental_histories = []
+
+    # create RentalHistory objects with results from query
+    for i in results:
+        item_id = i[0]
+        customer_id = i[1]
+        rental_date = str(i[2])
+        due_date = str(i[3])
+        return_date = str(i[4])
+
+        rental_histories.append(RentalHistory(
+            item_id,
+            customer_id,
+            rental_date,
+            due_date,
+            return_date
+        ))
+
+    return rental_histories
 
 
 # Bryson
@@ -257,8 +481,13 @@ def line_length(item_id: str = None) -> int:
     """
     Returns how many people are on the waitlist for this item.
     """
-    raise NotImplementedError("you must implement this function")
+    cur.execute("""
+        SELECT COUNT(*)
+        FROM waitlist
+        WHERE item_id = ?
+    """, (item_id, ))
 
+    return cur.fetchone()[0]
 
 def save_changes():
     """
