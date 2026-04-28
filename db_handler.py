@@ -15,7 +15,6 @@ conn = connect(user=DB_CONFIG["username"], password=DB_CONFIG["password"], host=
 cur = conn.cursor()
 
 
-# Bryson
 def add_item(new_item: Item = None):
     """
     new_item - An Item object containing a new item to be inserted into the DB in the item table.
@@ -49,7 +48,6 @@ def add_item(new_item: Item = None):
     
 
 
-# Gabby
 def add_customer(new_customer: Customer = None):
     """
     new_customer - A Customer object containing a new customer to be inserted into the DB in the customer table.
@@ -111,7 +109,6 @@ def add_customer(new_customer: Customer = None):
     ))
 
 
-# Bryson
 def edit_customer(original_customer_id: str = None, new_customer: Customer = None):
     """
     original_customer_id - A string containing the customer id for the customer to be edited.
@@ -161,7 +158,6 @@ def edit_customer(original_customer_id: str = None, new_customer: Customer = Non
     
 
 
-# Gabby
 def rent_item(item_id: str = None, customer_id: str = None):
     """
     item_id - A string containing the Item ID for the item being rented.
@@ -181,7 +177,6 @@ def rent_item(item_id: str = None, customer_id: str = None):
         due_date
     ))
 
-# Bryson
 def waitlist_customer(item_id: str = None, customer_id: str = None) -> int:
     """
     Returns the customer's new place in line.
@@ -196,7 +191,6 @@ def waitlist_customer(item_id: str = None, customer_id: str = None) -> int:
     return new_place
     
 
-# Gabby
 def update_waitlist(item_id: str = None):
     """
     Removes person at position 1 and shifts everyone else down by 1.
@@ -212,7 +206,6 @@ def update_waitlist(item_id: str = None):
     """, (item_id,))
 
 
-# Bryson
 def return_item(item_id: str = None, customer_id: str = None):
     """
     Moves a rental from rental to rental_history with return_date = today.
@@ -323,7 +316,6 @@ def get_filtered_items(filter_attributes: Item = None,
 
 
 
-# Gabby
 def get_filtered_customers(filter_attributes: Customer = None, use_patterns: bool = False) -> list[Customer]:
     """
     Returns a list of Customer objects matching the filters.
@@ -361,13 +353,14 @@ def get_filtered_customers(filter_attributes: Customer = None, use_patterns: boo
 
         # filter by name
         if name is not None:
-            first, last = name.split(" ", 1)
-            vars.append(first)
-            vars.append(last)
-
             if use_patterns:
-                cond.append("c.c_first_name LIKE ? AND c.c_last_name LIKE ?")
+                vars.append(name)
+                vars.append(name)
+                cond.append("(c.c_first_name LIKE ? OR c.c_last_name LIKE ?)")
             else:
+                first, last = name.split(" ", 1)
+                vars.append(first)
+                vars.append(last)
                 cond.append("c.c_first_name = ? AND c.c_last_name = ?")
 
         # filter by email
@@ -424,7 +417,7 @@ def get_filtered_customers(filter_attributes: Customer = None, use_patterns: boo
 
     # create customer objects with results from query
     for i in results:
-        customer_id = i[0]
+        customer_id = i[0].strip()
         first_name = i[1]
         last_name = i[2]
         street_num = i[3]
@@ -432,17 +425,16 @@ def get_filtered_customers(filter_attributes: Customer = None, use_patterns: boo
         city = i[5]
         state = i[6]
         zip_code = i[7]
-        email = i[8]
+        email = i[8].strip()
 
-        full_name = first_name + " " + last_name
-        full_address = street_num + " " + street_name + ", " + city + ", " + state + " " + zip_code
+        full_name = first_name.strip() + " " + last_name.strip()
+        full_address = street_num.strip() + " " + street_name.strip() + ", " + city.strip() + ", " + state.strip() + " " + zip_code.strip()
 
         customers.append(Customer(customer_id, full_name, full_address, email))
 
     return customers
 
 
-# Bryson
 def get_filtered_rentals(filter_attributes: Rental = None,
                          min_rental_date: str = None,
                          max_rental_date: str = None,
@@ -494,8 +486,8 @@ def get_filtered_rentals(filter_attributes: Rental = None,
     rentals = []
     for row in results:
         rentals.append(Rental(
-            item_id=row[0],
-            customer_id=row[1],
+            item_id=row[0].strip(),
+            customer_id=row[1].strip(),
             rental_date=str(row[2]),
             due_date=str(row[3]),
         ))
@@ -504,7 +496,6 @@ def get_filtered_rentals(filter_attributes: Rental = None,
     
 
 
-# Gabby
 def get_filtered_rental_histories(filter_attributes: RentalHistory = None,
                                   min_rental_date: str = None,
                                   max_rental_date: str = None,
@@ -623,7 +614,6 @@ def get_filtered_rental_histories(filter_attributes: RentalHistory = None,
     return rental_histories
 
 
-# Bryson
 def get_filtered_waitlist(filter_attributes: Waitlist = None,
                           min_place_in_line: int = -1,
                           max_place_in_line: int = -1) -> list[Waitlist]:
@@ -671,7 +661,7 @@ def get_filtered_waitlist(filter_attributes: Waitlist = None,
     
     return waitlist
 
-# Gabby
+
 def number_in_stock(item_id: str = None) -> int:
     """
     Returns num_owned - active rentals. Returns -1 if item doesn't exist.
@@ -701,7 +691,6 @@ def number_in_stock(item_id: str = None) -> int:
     return num_stock
 
 
-# Bryson
 def place_in_line(item_id: str = None, customer_id: str = None) -> int:
     """
     Returns the customer's place_in_line, or -1 if not on waitlist.
@@ -716,7 +705,7 @@ def place_in_line(item_id: str = None, customer_id: str = None) -> int:
         return -1
     return result[0]
 
-# Gabby
+
 def line_length(item_id: str = None) -> int:
     """
     Returns how many people are on the waitlist for this item.
