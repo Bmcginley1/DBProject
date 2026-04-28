@@ -21,7 +21,32 @@ def add_item(new_item: Item = None):
     new_item - An Item object containing a new item to be inserted into the DB in the item table.
         new_item and its attributes will never be None.
     """
-    raise NotImplementedError("you must implement this function")
+    cur.execute("""
+        SELECT MAX(i_item_sk) FROM item
+                """)
+    result = cur.fetchone()[0]
+    if result is None:
+        item_sk = 1
+    else:
+        item_sk = result + 1
+    
+    rec_start_date = date(new_item.start_year, 1, 1)
+    cur.execute("""
+        INSERT INTO item
+            (i_item_sk, i_item_id, i_rec_start_date, i_product_name, i_brand, i_class, i_category, i_manufact, i_current_price, i_num_owned)  
+        VALUES (?, ?, ?, ?, ?, NULL, ?, ?, ?, ?)        
+                """, (
+                    item_sk,
+                    new_item.item_id,
+                    rec_start_date,
+                    new_item.product_name,
+                    new_item.brand,
+                    new_item.category,
+                    new_item.manufact,
+                    new_item.current_price,
+                    new_item.num_owned,
+                ))
+    
 
 
 # Gabby
@@ -48,7 +73,7 @@ def add_customer(new_customer: Customer = None):
     if result is None:
         cust_sk = 1
     else:
-        cust_sk = cur.fetchone()[0] + 1
+        cust_sk = result + 1
 
     # splits address into components
     str_num, temp = new_customer.address.split(" ", 1)
@@ -92,7 +117,48 @@ def edit_customer(original_customer_id: str = None, new_customer: Customer = Non
     original_customer_id - A string containing the customer id for the customer to be edited.
     new_customer - A Customer object containing attributes to update. If an attribute is None, it should not be altered.
     """
-    raise NotImplementedError("you must implement this function")
+    if new_customer.address is not None:
+        str_num, temp = new_customer.address.split(" ", 1)
+        str_name, temp = temp.split(", ", 1)
+        city, temp = temp.split(", ", 1)
+        state, zip_code = temp.split(" ")
+        cur.execute("""
+            UPDATE customer_address
+            SET ca_street_number = ?,
+                ca_street_name = ?,
+                ca_city = ?,
+                ca_state = ?,
+                ca_zip = ?
+            WHERE ca_address_sk = (
+                    SELECT c_current_addr_sk FROM customer WHERE c_customer_id = ?
+                    )
+                    """, (str_num, str_name, city, state, zip_code, original_customer_id))
+        
+    sets = []
+    vars= []
+
+    if new_customer.name is not None:
+            first, last = new_customer.name.split(" ", 1)
+            sets.append("c_first_name = ?")
+            sets.append("c_last_name = ?")
+            vars.extend([first, last])
+        
+    if new_customer.customer_id is not None:
+            sets.append("c_customer_id = ?")
+            vars.append(new_customer.customer_id)
+
+    if new_customer.email is not None:
+            sets.append("c_email_address = ?")
+            vars.append(new_customer.email)
+        
+    if sets:
+            vars.append(original_customer_id)
+            cur.execute(f"""
+                        UPDATE customer
+                        SET {", ".join(sets)}
+                        WHERE c_customer_id = ?
+                        """, tuple(vars))
+    
 
 
 # Gabby
@@ -120,7 +186,15 @@ def waitlist_customer(item_id: str = None, customer_id: str = None) -> int:
     """
     Returns the customer's new place in line.
     """
-    raise NotImplementedError("you must implement this function")
+    new_place = line_length(item_id) + 1
+
+    cur.execute("""
+        INSERT INTO waitlist (item_id, customer_id, place_in_line)
+        VALUES (?, ?, ?)
+                """, (item_id, customer_id, new_place))
+    
+    return new_place
+    
 
 # Gabby
 def update_waitlist(item_id: str = None):
@@ -143,7 +217,17 @@ def return_item(item_id: str = None, customer_id: str = None):
     """
     Moves a rental from rental to rental_history with return_date = today.
     """
-    raise NotImplementedError("you must implement this function")
+    cur.execute("""
+        INSERT INTO rental_history (item_id, customer_id, rental_date, due_date, return_date)
+        SELECT item_id, customer_id, rental_date, due_date, ?
+        FROM rental
+        WHERE item_id = ? AND customer_id = ?        
+                """, (date.today(), item_id, customer_id))
+    
+    cur.execute("""
+        DELETE FROM rental
+        WHERE item_id = ? AND customer_id = ?
+                """, (item_id, customer_id))
 
 
 # Gabby
@@ -167,7 +251,76 @@ def get_filtered_items(filter_attributes: Item = None,
     """
     Returns a list of Item objects matching the filters.
     """
-    raise NotImplementedError("you must implement this function")
+
+    cond = []
+    vars = []
+
+    query = """
+        SELECT i_item_id, i_product_name, i_brand, i_category, i_manufact, i_current_price, YEAR(i_rec_start_date), i_num_owned
+        FROM item
+    """
+
+    if filter_attributes is not None:
+        if filter_attributes.item_id is not None:
+            vars.append(filter_attributes.item_id)
+            cond.append("i_item_id LIKE ?" if use_patterns else "i_item_id = ?")
+        if filter_attributes.product_name is not None:
+            vars.append(filter_attributes.product_name)
+            cond.append("i_product_name LIKE ?" if use_patterns else "i_product_name = ?")
+        if filter_attributes.brand is not None:
+            vars.append(filter_attributes.brand)
+            cond.append("i_brand LIKE ?" if use_patterns else "i_brand = ?")
+        if filter_attributes.category is not None:
+            vars.append(filter_attributes.category)
+            cond.append("i_category LIKE ?" if use_patterns else "i_category = ?")
+        if filter_attributes.manufact is not None:
+            vars.append(filter_attributes.manufact)
+            cond.append("i_manufact LIKE ?" if use_patterns else "i_manufact = ?")
+        if filter_attributes.current_price != -1:
+            vars.append(filter_attributes.current_price)
+            cond.append("i_current_price = ?")
+        if filter_attributes.start_year != -1:
+            vars.append(filter_attributes.start_year)
+            cond.append("YEAR(i_rec_start_date) = ?")
+        if filter_attributes.num_owned != -1:
+            vars.append(filter_attributes.num_owned)
+            cond.append("i_num_owned = ?")
+    
+    if min_price != -1:
+        vars.append(min_price)
+        cond.append("i_current_price >= ?")
+    if max_price != -1:
+        vars.append(max_price)
+        cond.append("i_current_price <= ?")
+    if min_start_year != -1:
+        vars.append(min_start_year)
+        cond.append("YEAR(i_rec_start_date) >= ?")
+    if max_start_year != -1:
+        vars.append(max_start_year)
+        cond.append("YEAR(i_rec_start_date) <= ?")
+    
+    if cond:
+        query += " WHERE " + " AND ".join(cond)
+    
+
+    cur.execute(query, tuple(vars))
+    results = cur.fetchall()
+
+    items = []
+    for row in results:
+        items.append(Item(
+            item_id=row[0].strip(),
+            product_name=row[1].strip(),
+            brand=row[2].strip(),
+            category=row[3].strip(),
+            manufact=row[4].strip(),
+            current_price=row[5],
+            start_year=row[6],
+            num_owned=row[7],
+        ))
+    
+    return items
+
 
 
 # Gabby
@@ -298,7 +451,57 @@ def get_filtered_rentals(filter_attributes: Rental = None,
     """
     Returns a list of Rental objects matching the filters.
     """
-    raise NotImplementedError("you must implement this function")
+    cond = []
+    vars = []
+
+    query = """
+        SELECT item_id, customer_id, rental_date, due_date
+        FROM rental
+    """
+    if filter_attributes is not None:
+        if filter_attributes.item_id is not None:
+            vars.append(filter_attributes.item_id)
+            cond.append("item_id = ?")
+        if filter_attributes.customer_id is not None:
+            vars.append(filter_attributes.customer_id)
+            cond.append("customer_id = ?")
+        if filter_attributes.rental_date is not None:
+            vars.append(filter_attributes.rental_date)
+            cond.append("rental_date = ?")
+        if filter_attributes.due_date is not None:
+            vars.append(filter_attributes.due_date)
+            cond.append("due_date = ?")
+    
+    if min_rental_date is not None:
+        vars.append(min_rental_date)
+        cond.append("rental_date >= ?")
+    if max_rental_date is not None:
+        vars.append(max_rental_date)
+        cond.append("rental_date <= ?")
+    if min_due_date is not None:
+        vars.append(min_due_date)
+        cond.append("due_date >= ?")
+    if max_due_date is not None:
+        vars.append(max_due_date)
+        cond.append("due_date <= ?")
+    
+    if cond:
+        query += " Where " + " AND ".join(cond)
+    
+    cur.execute(query, tuple(vars))
+    results = cur.fetchall()
+
+    rentals = []
+    for row in results:
+        rentals.append(Rental(
+            item_id=row[0],
+            customer_id=row[1],
+            rental_date=str(row[2]),
+            due_date=str(row[3]),
+        ))
+    
+    return rentals
+    
 
 
 # Gabby
@@ -427,8 +630,46 @@ def get_filtered_waitlist(filter_attributes: Waitlist = None,
     """
     Returns a list of Waitlist objects matching the filters.
     """
-    raise NotImplementedError("you must implement this function")
+    cond = []
+    vars = []
 
+    query = """
+        SELECT item_id, customer_id, place_in_line
+        FROM waitlist
+    """
+    if filter_attributes is not None:
+        if filter_attributes.item_id is not None:
+            vars.append(filter_attributes.item_id)
+            cond.append("item_id = ?")
+        if filter_attributes.customer_id is not None:
+            vars.append(filter_attributes.customer_id)
+            cond.append("customer_id = ?")
+        if filter_attributes.place_in_line != -1:
+            vars.append(filter_attributes.place_in_line)
+            cond.append("place_in_line = ?")
+    
+    if min_place_in_line != -1:
+        vars.append(min_place_in_line)
+        cond.append("place_in_line >= ?")
+    if max_place_in_line != -1:
+        vars.append(max_place_in_line)
+        cond.append("place_in_line <= ?")
+    
+    if cond:
+        query += " WHERE " + " AND ".join(cond)
+    
+    cur.execute(query, tuple(vars))
+    results = cur.fetchall()
+
+    waitlist = []
+    for row in results:
+        waitlist.append(Waitlist(
+            item_id=row[0],
+            customer_id=row[1],
+            place_in_line=row[2],
+        ))
+    
+    return waitlist
 
 # Gabby
 def number_in_stock(item_id: str = None) -> int:
@@ -465,8 +706,15 @@ def place_in_line(item_id: str = None, customer_id: str = None) -> int:
     """
     Returns the customer's place_in_line, or -1 if not on waitlist.
     """
-    raise NotImplementedError("you must implement this function")
-
+    cur.execute("""
+        SELECT place_in_line FROM waitlist
+        WHERE item_id = ? and customer_id = ?
+                """, (item_id, customer_id))
+    
+    result = cur.fetchone()
+    if result is None:
+        return -1
+    return result[0]
 
 # Gabby
 def line_length(item_id: str = None) -> int:
