@@ -151,14 +151,6 @@ def grant_extension(item_id: str = None, customer_id: str = None):
     """
     Adds 14 days to the due_date.
     """
-    # fix the updating to 14 days- check discussion
-    # retrieve current due date
-    # update due date in python
-    # update rental
-
-    # or
-
-    # update due date in sql
     cur.execute("""
         UPDATE rental
         SET due_date = DATE_ADD(due_date, INTERVAL 14 DAY)
