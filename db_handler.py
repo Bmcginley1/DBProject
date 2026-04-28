@@ -130,31 +130,29 @@ def edit_customer(original_customer_id: str = None, new_customer: Customer = Non
                     SELECT c_current_addr_sk FROM customer WHERE c_customer_id = ?
                     )
                     """, (str_num, str_name, city, state, zip_code, original_customer_id))
-        
-    sets = []
-    vars= []
 
     if new_customer.name is not None:
-            first, last = new_customer.name.split(" ", 1)
-            sets.append("c_first_name = ?")
-            sets.append("c_last_name = ?")
-            vars.extend([first, last])
-        
-    if new_customer.customer_id is not None:
-            sets.append("c_customer_id = ?")
-            vars.append(new_customer.customer_id)
+        first, last = new_customer.name.split(" ", 1)
+
+        cur.execute("""
+            UPDATE customer
+            SET c_first_name = ?, c_last_name = ?
+            WHERE c_customer_id = ?
+        """, (first, last, original_customer_id))
 
     if new_customer.email is not None:
-            sets.append("c_email_address = ?")
-            vars.append(new_customer.email)
-        
-    if sets:
-            vars.append(original_customer_id)
-            cur.execute(f"""
-                        UPDATE customer
-                        SET {", ".join(sets)}
-                        WHERE c_customer_id = ?
-                        """, tuple(vars))
+        cur.execute("""
+            UPDATE customer
+            SET c_email_address = ?
+            WHERE c_customer_id = ?
+        """, (new_customer.email, original_customer_id))
+
+    if new_customer.customer_id is not None:
+        cur.execute("""
+            UPDATE customer
+            SET c_customer_id = ?
+            WHERE c_customer_id = ?
+        """, (new_customer.customer_id, original_customer_id))
     
 
 
@@ -202,7 +200,7 @@ def update_waitlist(item_id: str = None):
     cur.execute("""
         UPDATE waitlist 
         SET place_in_line = place_in_line - 1 
-        WHERE item_id = ?
+        WHERE item_id = ?  AND place_in_line > 1
     """, (item_id,))
 
 
@@ -478,7 +476,7 @@ def get_filtered_rentals(filter_attributes: Rental = None,
         cond.append("due_date <= ?")
     
     if cond:
-        query += " Where " + " AND ".join(cond)
+        query += " WHERE " + " AND ".join(cond)
     
     cur.execute(query, tuple(vars))
     results = cur.fetchall()
@@ -597,8 +595,8 @@ def get_filtered_rental_histories(filter_attributes: RentalHistory = None,
 
     # create RentalHistory objects with results from query
     for i in results:
-        item_id = i[0]
-        customer_id = i[1]
+        item_id = i[0].strip()
+        customer_id = i[1].strip()
         rental_date = str(i[2])
         due_date = str(i[3])
         return_date = str(i[4])
@@ -654,8 +652,8 @@ def get_filtered_waitlist(filter_attributes: Waitlist = None,
     waitlist = []
     for row in results:
         waitlist.append(Waitlist(
-            item_id=row[0],
-            customer_id=row[1],
+            item_id=row[0].strip(),
+            customer_id=row[1].strip(),
             place_in_line=row[2],
         ))
     
@@ -731,8 +729,6 @@ def close_connection():
     """
     if cur:
         cur.close()
-        print("Cursor closed.")
     if conn:
         conn.close()
-        print("Connection closed.")
 
