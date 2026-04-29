@@ -20,6 +20,7 @@ def add_item(new_item: Item = None):
     new_item - An Item object containing a new item to be inserted into the DB in the item table.
         new_item and its attributes will never be None.
     """
+    #this lets us figure out what the highest sk is so we can make the new one that value + 1
     cur.execute("""
         SELECT MAX(i_item_sk) FROM item
                 """)
@@ -114,6 +115,7 @@ def edit_customer(original_customer_id: str = None, new_customer: Customer = Non
     original_customer_id - A string containing the customer id for the customer to be edited.
     new_customer - A Customer object containing attributes to update. If an attribute is None, it should not be altered.
     """
+    #we have to look up the address w the customer's current address key
     if new_customer.address is not None:
         str_num, temp = new_customer.address.split(" ", 1)
         str_name, temp = temp.split(", ", 1)
@@ -130,7 +132,7 @@ def edit_customer(original_customer_id: str = None, new_customer: Customer = Non
                     SELECT c_current_addr_sk FROM customer WHERE c_customer_id = ?
                     )
                     """, (str_num, str_name, city, state, zip_code, original_customer_id))
-
+    #split the name since theyre separate columns
     if new_customer.name is not None:
         first, last = new_customer.name.split(" ", 1)
 
@@ -147,6 +149,7 @@ def edit_customer(original_customer_id: str = None, new_customer: Customer = Non
             WHERE c_customer_id = ?
         """, (new_customer.email, original_customer_id))
 
+    #this must come last bc if we updated first, the other updates would fail
     if new_customer.customer_id is not None:
         cur.execute("""
             UPDATE customer
@@ -221,7 +224,7 @@ def return_item(item_id: str = None, customer_id: str = None):
                 """, (item_id, customer_id))
 
 
-# Gabby
+
 def grant_extension(item_id: str = None, customer_id: str = None):
     """
     Adds 14 days to the due_date.
@@ -232,7 +235,7 @@ def grant_extension(item_id: str = None, customer_id: str = None):
         WHERE item_id = ? AND customer_id = ?
     """, (item_id, customer_id))
 
-# Bryson
+
 def get_filtered_items(filter_attributes: Item = None,
                        use_patterns: bool = False,
                        min_price: float = -1,
@@ -242,15 +245,15 @@ def get_filtered_items(filter_attributes: Item = None,
     """
     Returns a list of Item objects matching the filters.
     """
-
+    # to store condition strings and variables
     cond = []
     vars = []
-
+    # create query string to add to
     query = """
         SELECT i_item_id, i_product_name, i_brand, i_category, i_manufact, i_current_price, YEAR(i_rec_start_date), i_num_owned
         FROM item
     """
-
+    #filter by all filters
     if filter_attributes is not None:
         if filter_attributes.item_id is not None:
             vars.append(filter_attributes.item_id)
@@ -289,14 +292,15 @@ def get_filtered_items(filter_attributes: Item = None,
     if max_start_year != -1:
         vars.append(max_start_year)
         cond.append("YEAR(i_rec_start_date) <= ?")
-    
+    # add conditions to query string
     if cond:
         query += " WHERE " + " AND ".join(cond)
     
-
+    # execute query and store
     cur.execute(query, tuple(vars))
     results = cur.fetchall()
 
+    #.strip() for trailing spaces of CHAR columns
     items = []
     for row in results:
         items.append(Item(
